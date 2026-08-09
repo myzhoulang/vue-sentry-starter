@@ -12,6 +12,8 @@ bun run dev
 
 在 `.env.local` 中填写 `VITE_SENTRY_DSN` 后，Sentry 会自动捕获 Vue 运行时错误和路由性能数据。DSN 为空时不会初始化 Sentry。
 
+生产环境还配置了同源 `VITE_SENTRY_TUNNEL=/vue-sentry-starter/sentry-tunnel`，由 Nginx 转发 Sentry envelope，避免 HTTP 页面直接请求 Sentry ingest 时被浏览器的 PNA/CORS 策略拦截。
+
 ## 常用命令
 
 ```bash

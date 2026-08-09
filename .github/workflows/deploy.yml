@@ -22,6 +22,7 @@ jobs:
     env:
       VITE_BASE_PATH: /vue-sentry-starter/
       VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      VITE_SENTRY_TUNNEL: /vue-sentry-starter/sentry-tunnel
       VITE_APP_ENV: production
       VITE_SENTRY_RELEASE: ${{ github.event.repository.name }}@${{ github.sha }}
       SENTRY_URL: ${{ vars.SENTRY_URL }}
