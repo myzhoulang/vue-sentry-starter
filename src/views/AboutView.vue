@@ -6,6 +6,8 @@
 
 <script setup lang="ts">
 const book = () => {
+  // @ts-ignore
+  Toast("开始预订");
   fetch('/api/book', {
     method: 'POST',
     headers: {
