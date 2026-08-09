@@ -1,0 +1,78 @@
+name: 发布生产环境
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: 构建并发布
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.DEPLOY_URL }}
+    env:
+      VITE_BASE_PATH: /vue-sentry-starter/
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      VITE_APP_ENV: production
+      VITE_SENTRY_RELEASE: ${{ github.event.repository.name }}@${{ github.sha }}
+      SENTRY_URL: ${{ vars.SENTRY_URL }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: 安装依赖
+        run: bun install --frozen-lockfile
+
+      - name: 类型检查
+        run: bun run typecheck
+
+      - name: 构建并上传 Sentry Source Map
+        run: bun run build:sentry
+
+      - name: 配置部署密钥
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: 原子发布到服务器
+        run: |
+          RELEASE_DIR="$DEPLOY_PATH/releases/$GITHUB_SHA"
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$RELEASE_DIR'"
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes" \
+            dist/ "$DEPLOY_USER@$DEPLOY_HOST:$RELEASE_DIR/"
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "ln -sfn '$RELEASE_DIR' '$DEPLOY_PATH/current'"
+
+      - name: 验证线上服务
+        run: curl --fail --retry 5 --retry-delay 2 "$DEPLOY_URL"
