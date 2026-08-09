@@ -6,8 +6,7 @@
 
 <script setup lang="ts">
 const book = () => {
-  // @ts-ignore
-  Toast("开始预订");
+  window.alert("开始预订");
   fetch('/api/book', {
     method: 'POST',
     headers: {
@@ -18,8 +17,7 @@ const book = () => {
       version: '3.0.0',
     }),
   }).catch(() => {
-    // @ts-ignore
-  Toast("预订失败");
+    window.alert("预订失败");
   })
-} 
+}
 </script>
